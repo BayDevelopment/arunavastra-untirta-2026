@@ -2,9 +2,18 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Raspberry Pi Monitor</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arunavastra — MarineHyProjects</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700&display=swap"
@@ -20,59 +29,60 @@
         }
 
         :root {
-            --bg: #0a0e1a;
-            --bg-card: #111827;
-            --bg-card2: #151e2e;
+            --bg: #080d18;
+            --bg-card: #0f1724;
+            --bg-card2: #131c2b;
             --border: rgba(255, 255, 255, 0.07);
-            --border-glow: rgba(56, 189, 248, 0.3);
-            --accent: #38bdf8;
-            --accent2: #6ee7b7;
-            --accent3: #f472b6;
+            --border2: rgba(255, 255, 255, 0.12);
             --text: #f1f5f9;
             --muted: #64748b;
             --muted2: #94a3b8;
+            --accent: #38bdf8;
+            --green: #6ee7b7;
+            --pink: #f472b6;
+            --amber: #fbbf24;
+            --red: #f87171;
             --font: 'Sora', sans-serif;
             --mono: 'JetBrains Mono', monospace;
-            --radius: 14px;
-            --radius-sm: 8px;
+            --r: 12px;
+            --rs: 8px;
         }
 
         body {
             font-family: var(--font);
             background: var(--bg);
             color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Subtle animated grid bg */
+        /* subtle grid overlay */
         body::before {
             content: '';
             position: fixed;
             inset: 0;
             background-image:
-                linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
+                linear-gradient(rgba(56, 189, 248, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.025) 1px, transparent 1px);
+            background-size: 44px 44px;
             pointer-events: none;
             z-index: 0;
         }
 
-        .shell {
-            position: relative;
-            z-index: 1;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 28px 24px 48px;
-        }
-
         /* ── TOPBAR ── */
-        .topbar {
+        header {
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+            height: 58px;
+            background: var(--bg-card);
+            border-bottom: 0.5px solid var(--border2);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 28px;
-            flex-wrap: wrap;
+            padding: 0 18px;
             gap: 12px;
         }
 
@@ -83,9 +93,9 @@
         }
 
         .brand-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--rs);
             background: linear-gradient(135deg, #1e40af, #0ea5e9);
             display: flex;
             align-items: center;
@@ -94,54 +104,77 @@
         }
 
         .brand-icon svg {
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             fill: white;
         }
 
-        .brand-text h1 {
-            font-size: 17px;
+        .brand-name {
+            font-size: 15px;
             font-weight: 700;
             letter-spacing: -0.3px;
-            line-height: 1.2;
+            color: var(--text);
         }
 
-        .brand-text p {
-            font-size: 12px;
+        .brand-sub {
+            font-size: 10px;
             color: var(--muted);
             font-family: var(--mono);
             margin-top: 1px;
         }
 
-        .topbar-right {
+        .header-right {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
-        .pill-live {
+        .pill {
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(110, 231, 183, 0.1);
-            border: 1px solid rgba(110, 231, 183, 0.2);
             border-radius: 999px;
             padding: 5px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent2);
+            font-size: 11px;
             font-family: var(--mono);
+            font-weight: 600;
+            border: 0.5px solid;
         }
 
-        .dot-live {
-            width: 7px;
-            height: 7px;
+        .pill-live {
+            background: rgba(110, 231, 183, 0.08);
+            border-color: rgba(110, 231, 183, 0.2);
+            color: var(--green);
+        }
+
+        .pill-conn {
+            background: rgba(56, 189, 248, 0.08);
+            border-color: rgba(56, 189, 248, 0.2);
+            color: var(--accent);
+            transition: all .3s;
+        }
+
+        .pill-conn.ok {
+            background: rgba(110, 231, 183, 0.08);
+            border-color: rgba(110, 231, 183, 0.2);
+            color: var(--green);
+        }
+
+        .pill-conn.err {
+            background: rgba(248, 113, 113, 0.08);
+            border-color: rgba(248, 113, 113, 0.2);
+            color: var(--red);
+        }
+
+        .dot-pulse {
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            background: var(--accent2);
-            animation: pulse-dot 1.5s ease-in-out infinite;
+            background: currentColor;
+            animation: pdot 1.4s ease-in-out infinite;
         }
 
-        @keyframes pulse-dot {
+        @keyframes pdot {
 
             0%,
             100% {
@@ -150,322 +183,351 @@
             }
 
             50% {
-                opacity: 0.5;
-                transform: scale(0.75);
+                opacity: .4;
+                transform: scale(.7);
             }
-        }
-
-        .pill-ip {
-            background: rgba(56, 189, 248, 0.08);
-            border: 1px solid rgba(56, 189, 248, 0.18);
-            border-radius: 999px;
-            padding: 5px 12px;
-            font-size: 12px;
-            color: var(--accent);
-            font-family: var(--mono);
         }
 
         /* ── STAT ROW ── */
         .stat-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 14px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px 18px;
             position: relative;
-            overflow: hidden;
-            transition: border-color 0.2s;
+            z-index: 1;
+            flex-shrink: 0;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0;
+            background: var(--bg-card);
+            border-bottom: 0.5px solid var(--border2);
         }
 
-        .stat-card::before {
+        .stat-cell {
+            padding: 10px 16px;
+            border-right: 0.5px solid var(--border);
+            position: relative;
+        }
+
+        .stat-cell:last-child {
+            border-right: none;
+        }
+
+        .stat-cell::after {
             content: '';
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
             right: 0;
             height: 2px;
-            border-radius: 2px 2px 0 0;
         }
 
-        .stat-card.blue::before {
+        .sc-blue::after {
             background: linear-gradient(90deg, #38bdf8, #818cf8);
         }
 
-        .stat-card.green::before {
+        .sc-green::after {
             background: linear-gradient(90deg, #6ee7b7, #34d399);
         }
 
-        .stat-card.pink::before {
+        .sc-pink::after {
             background: linear-gradient(90deg, #f472b6, #c084fc);
         }
 
-        .stat-card.amber::before {
+        .sc-amber::after {
             background: linear-gradient(90deg, #fbbf24, #fb923c);
         }
 
-        .stat-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--muted);
-            font-family: var(--mono);
-            margin-bottom: 8px;
+        .sc-teal::after {
+            background: linear-gradient(90deg, #2dd4bf, #0ea5e9);
         }
 
-        .stat-value {
-            font-size: 22px;
+        .sc-red::after {
+            background: linear-gradient(90deg, #f87171, #fb923c);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin-bottom: 3px;
+        }
+
+        .stat-val {
+            font-size: 17px;
             font-weight: 700;
             font-family: var(--mono);
-            letter-spacing: -0.5px;
+            letter-spacing: -.5px;
             color: var(--text);
             line-height: 1;
         }
 
-        .stat-value span {
-            font-size: 13px;
+        .stat-val span {
+            font-size: 11px;
             font-weight: 400;
             color: var(--muted2);
-            margin-left: 3px;
+            margin-left: 2px;
         }
 
-        /* ── MAIN GRID ── */
-        .main-grid {
+        /* ── MAIN ── */
+        .main {
+            position: relative;
+            z-index: 1;
+            flex: 1;
             display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 20px;
-            align-items: start;
+            grid-template-columns: 1fr 340px;
+            gap: 10px;
+            padding: 10px;
+            min-height: 0;
         }
 
-        @media (max-width: 960px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ── CARD BASE ── */
+        /* ── CARD ── */
         .card {
             background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border: 0.5px solid var(--border2);
+            border-radius: var(--r);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .card-header {
+        .card-hd {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
+            padding: 10px 14px;
+            border-bottom: 0.5px solid var(--border);
+            flex-shrink: 0;
         }
 
         .card-title {
-            font-size: 13px;
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: .7px;
             color: var(--muted2);
             font-family: var(--mono);
         }
 
         .card-badge {
-            font-size: 11px;
+            font-size: 10px;
             font-family: var(--mono);
-            padding: 3px 9px;
+            padding: 2px 8px;
             border-radius: 999px;
-            background: rgba(56, 189, 248, 0.1);
-            border: 1px solid rgba(56, 189, 248, 0.2);
+            background: rgba(56, 189, 248, 0.08);
+            border: 0.5px solid rgba(56, 189, 248, 0.2);
             color: var(--accent);
         }
 
-        /* ── CAMERA ── */
-        .camera-wrap {
+        .card-badge.green {
+            background: rgba(110, 231, 183, 0.08);
+            border-color: rgba(110, 231, 183, 0.2);
+            color: var(--green);
+        }
+
+        /* ── LEFT PANEL ── */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        /* ── DUAL CAMERA ── */
+        .cam-card {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .dual-cam {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .cam-pane {
             position: relative;
             background: #000;
+            overflow: hidden;
         }
 
-        .camera-wrap img {
+        .cam-pane:first-child {
+            border-right: 0.5px solid var(--border);
+        }
+
+        .cam-pane img {
             width: 100%;
-            display: block;
-            min-height: 300px;
+            height: 100%;
             object-fit: cover;
+            display: block;
         }
 
-        .camera-overlay {
+        .cam-overlay {
             position: absolute;
             inset: 0;
             pointer-events: none;
         }
 
-        /* Corner brackets */
-        .camera-overlay::before,
-        .camera-overlay::after {
+        .cam-overlay::before,
+        .cam-overlay::after {
             content: '';
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 18px;
+            height: 18px;
             border-color: var(--accent);
             border-style: solid;
+            opacity: .7;
         }
 
-        .camera-overlay::before {
-            top: 12px;
-            left: 12px;
-            border-width: 2px 0 0 2px;
+        .cam-overlay::before {
+            top: 10px;
+            left: 10px;
+            border-width: 1.5px 0 0 1.5px;
         }
 
-        .camera-overlay::after {
-            bottom: 12px;
-            right: 12px;
-            border-width: 0 2px 2px 0;
+        .cam-overlay::after {
+            bottom: 10px;
+            right: 10px;
+            border-width: 0 1.5px 1.5px 0;
         }
 
         .cam-rec {
             position: absolute;
-            top: 12px;
-            right: 12px;
+            top: 8px;
+            right: 8px;
             display: flex;
             align-items: center;
-            gap: 5px;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(6px);
+            gap: 4px;
+            background: rgba(0, 0, 0, .6);
+            backdrop-filter: blur(4px);
             border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-family: var(--mono);
-            color: #f87171;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .cam-rec-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #f87171;
-            animation: pulse-dot 1s ease-in-out infinite;
-        }
-
-        .cam-time {
-            position: absolute;
-            bottom: 12px;
-            left: 12px;
-            font-size: 11px;
-            font-family: var(--mono);
-            color: rgba(255, 255, 255, 0.7);
-            background: rgba(0, 0, 0, 0.5);
             padding: 3px 8px;
+            font-size: 9px;
+            font-family: var(--mono);
+            color: var(--red);
+            font-weight: 600;
+            letter-spacing: .4px;
+        }
+
+        .rec-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--red);
+            animation: pdot 1s infinite;
+        }
+
+        .cam-label {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            font-size: 9px;
+            font-family: var(--mono);
+            color: rgba(255, 255, 255, .65);
+            background: rgba(0, 0, 0, .5);
+            padding: 2px 7px;
             border-radius: 4px;
         }
 
-        /* ── GPS PANEL ── */
-        .gps-side {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .gps-status-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            background: var(--bg-card2);
-        }
-
-        .gps-status-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* ── CAPTURE ROW ── */
+        .capture-card {
             flex-shrink: 0;
         }
 
-        .gps-status-icon svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .gps-status-text {
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .gps-status-sub {
-            font-size: 11px;
-            color: var(--muted);
-            font-family: var(--mono);
-        }
-
-        #gps-status-wrap.active .gps-status-icon {
-            background: rgba(110, 231, 183, 0.15);
-        }
-
-        #gps-status-wrap.active .gps-status-icon svg {
-            stroke: #6ee7b7;
-        }
-
-        #gps-status-wrap.active .gps-status-text {
-            color: #6ee7b7;
-        }
-
-        #gps-status-wrap.error .gps-status-icon {
-            background: rgba(248, 113, 113, 0.15);
-        }
-
-        #gps-status-wrap.error .gps-status-icon svg {
-            stroke: #f87171;
-        }
-
-        #gps-status-wrap.error .gps-status-text {
-            color: #f87171;
-        }
-
-        #gps-status-wrap.loading .gps-status-icon {
-            background: rgba(56, 189, 248, 0.15);
-        }
-
-        #gps-status-wrap.loading .gps-status-icon svg {
-            stroke: var(--accent);
-        }
-
-        #gps-status-wrap.loading .gps-status-text {
-            color: var(--accent);
-        }
-
-        /* GPS data grid */
-        .gps-data-grid {
+        .capture-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            padding: 16px 20px;
         }
 
-        .gps-field {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 12px 14px;
+        .cap-pane {
+            padding: 10px 14px;
         }
 
-        .gps-field-label {
-            font-size: 10px;
+        .cap-pane:first-child {
+            border-right: 0.5px solid var(--border);
+        }
+
+        .cap-label {
+            font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: .7px;
             color: var(--muted);
             font-family: var(--mono);
             margin-bottom: 6px;
         }
 
-        .gps-field-value {
-            font-size: 15px;
+        .cap-img-wrap {
+            background: var(--bg-card2);
+            border: 0.5px solid var(--border);
+            border-radius: var(--rs);
+            overflow: hidden;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cap-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .cap-empty {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        /* ── RIGHT PANEL ── */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        /* ── MAP ── */
+        .map-card {
+            flex-shrink: 0;
+        }
+
+        #map {
+            height: 200px;
+            width: 100%;
+        }
+
+        /* ── TELEMETRY ── */
+        .tele-card {
+            flex-shrink: 0;
+        }
+
+        .tele-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 10px 12px;
+        }
+
+        .tele-field {
+            background: var(--bg-card2);
+            border: 0.5px solid var(--border);
+            border-radius: var(--rs);
+            padding: 8px 10px;
+        }
+
+        .tele-lbl {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin-bottom: 4px;
+        }
+
+        .tele-val {
+            font-size: 13px;
             font-weight: 600;
             font-family: var(--mono);
             color: var(--text);
@@ -474,318 +536,480 @@
             text-overflow: ellipsis;
         }
 
-        /* Map */
-        .map-wrap {
-            margin: 0 20px 20px;
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            border: 1px solid var(--border);
+        /* ── PROGRESS ── */
+        .prog-card {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .prog-inner {
+            padding: 10px 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .timeline {
             position: relative;
+            padding-left: 16px;
+            border-left: 1.5px solid var(--border2);
         }
 
-        .map-wrap iframe {
-            width: 100%;
-            height: 220px;
-            display: block;
-            border: 0;
-            filter: invert(0.9) hue-rotate(180deg) saturate(0.8);
-        }
-
-        .map-placeholder {
-            height: 220px;
+        .log-item {
+            position: relative;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--muted);
-            font-size: 13px;
-            font-family: var(--mono);
+            margin-bottom: 14px;
         }
 
-        .map-placeholder svg {
-            width: 28px;
-            height: 28px;
-            stroke: var(--muted);
-            opacity: 0.5;
+        .log-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .log-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border2);
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all .3s;
+        }
+
+        .log-item.active .log-dot {
+            background: #22c55e;
+            animation: pglow 1.6s infinite;
+        }
+
+        .log-item.done .log-dot {
+            background: var(--accent);
+        }
+
+        @keyframes pglow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, .5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        .log-text {
+            font-size: 11px;
+            color: var(--muted2);
+            font-family: var(--mono);
+            transition: color .3s;
+        }
+
+        .log-item.active .log-text {
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .log-item.done .log-text {
+            color: var(--muted);
         }
 
         /* ── FOOTER ── */
-        .footer {
-            margin-top: 28px;
+        footer {
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+            height: 26px;
+            background: var(--bg-card);
+            border-top: 0.5px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            border-top: 1px solid var(--border);
-            padding-top: 20px;
-            font-size: 12px;
+            padding: 0 16px;
+            font-size: 10px;
             color: var(--muted);
             font-family: var(--mono);
         }
 
-        .footer-right {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        #last-update {
+        #f-time {
             color: var(--muted2);
-        }
-
-        /* ── RESPONSIVE ── */
-        @media (max-width: 600px) {
-            .shell {
-                padding: 16px 14px 40px;
-            }
-
-            .stat-row {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .gps-data-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .brand-text h1 {
-                font-size: 15px;
-            }
-
-            .topbar-right .pill-ip {
-                display: none;
-            }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="shell">
-
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <div class="brand">
-                <div class="brand-icon">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
-                    </svg>
-                </div>
-                <div class="brand-text">
-                    <h1>Raspberry Pi Monitor</h1>
-                    <p>Realtime · Webcam + GPS NEO M8N</p>
-                </div>
+    <!-- ── HEADER ── -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 2C8 2 4.5 5.5 4.5 10c0 5.25 7.5 12 7.5 12s7.5-6.75 7.5-12C19.5 5.5 16 2 12 2zm0 10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+                </svg>
             </div>
-            <div class="topbar-right">
-                <div class="pill-ip">{{ $raspberryIp }}</div>
-                <div class="pill-live">
-                    <div class="dot-live"></div>
-                    LIVE
-                </div>
+            <div>
+                <div class="brand-name">Arunavastra — MarineHyProjects</div>
+                <div class="brand-sub">Realtime · Dual Camera + GPS Telemetry</div>
             </div>
         </div>
 
-        <!-- STAT ROW -->
-        <div class="stat-row">
-            <div class="stat-card blue">
-                <div class="stat-label">Latitude</div>
-                <div class="stat-value" id="s-lat">—</div>
+        <div class="header-right">
+            <div class="pill pill-conn" id="conn-pill">
+                <div class="dot-pulse"></div>
+                <span id="conn-text">Connecting...</span>
             </div>
-            <div class="stat-card green">
-                <div class="stat-label">Longitude</div>
-                <div class="stat-value" id="s-lng">—</div>
-            </div>
-            <div class="stat-card pink">
-                <div class="stat-label">Altitude</div>
-                <div class="stat-value" id="s-alt">—<span>m</span></div>
-            </div>
-            <div class="stat-card amber">
-                <div class="stat-label">Speed</div>
-                <div class="stat-value" id="s-spd">—<span>m/s</span></div>
+            <div class="pill pill-live">
+                <div class="dot-pulse"></div>
+                LIVE
             </div>
         </div>
+    </header>
 
-        <!-- MAIN GRID -->
-        <div class="main-grid">
-
-            <!-- CAMERA CARD -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Kamera Realtime</div>
-                    <div class="card-badge">mjpeg · 8080</div>
-                </div>
-                <div class="camera-wrap">
-                    <img src="http://{{ $raspberryIp }}:8080/?action=stream" alt="Webcam Stream" id="cam-img">
-                    <div class="camera-overlay"></div>
-                    <div class="cam-rec">
-                        <div class="cam-rec-dot"></div>
-                        REC
-                    </div>
-                    <div class="cam-time" id="cam-time">--:--:--</div>
-                </div>
-            </div>
-
-            <!-- GPS SIDE -->
-            <div class="gps-side">
-
-                <!-- GPS STATUS CARD -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">GPS NEO M8N</div>
-                        <div class="card-badge" id="gps-fix-label">fix: —</div>
-                    </div>
-
-                    <div class="gps-status-bar" id="gps-status-wrap" class="loading">
-                        <div class="gps-status-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <circle cx="12" cy="12" r="3" />
-                                <line x1="12" y1="2" x2="12" y2="6" />
-                                <line x1="12" y1="18" x2="12" y2="22" />
-                                <line x1="2" y1="12" x2="6" y2="12" />
-                                <line x1="18" y1="12" x2="22" y2="12" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="gps-status-text" id="gps-status-text">Mengambil data...</div>
-                            <div class="gps-status-sub" id="gps-status-sub">port :5000 · /api/gps</div>
-                        </div>
-                    </div>
-
-                    <div class="gps-data-grid">
-                        <div class="gps-field">
-                            <div class="gps-field-label">Latitude</div>
-                            <div class="gps-field-value" id="latitude">—</div>
-                        </div>
-                        <div class="gps-field">
-                            <div class="gps-field-label">Longitude</div>
-                            <div class="gps-field-value" id="longitude">—</div>
-                        </div>
-                        <div class="gps-field">
-                            <div class="gps-field-label">Altitude</div>
-                            <div class="gps-field-value" id="altitude">—</div>
-                        </div>
-                        <div class="gps-field">
-                            <div class="gps-field-label">Speed</div>
-                            <div class="gps-field-value" id="speed">—</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MAP CARD -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Peta Lokasi</div>
-                        <div class="card-badge" id="map-coords-label">menunggu fix...</div>
-                    </div>
-                    <div class="map-wrap">
-                        <div class="map-placeholder" id="map-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
-                            </svg>
-                            Menunggu sinyal GPS...
-                        </div>
-                        <iframe id="map" src="" style="display:none" allowfullscreen
-                            loading="lazy"></iframe>
-                    </div>
-                </div>
-
-            </div>
+    <!-- ── STAT ROW ── -->
+    <div class="stat-row">
+        <div class="stat-cell sc-blue">
+            <div class="stat-label">Latitude</div>
+            <div class="stat-val" id="s-lat">—</div>
         </div>
-
-        <!-- FOOTER -->
-        <div class="footer">
-            <span>Raspberry Pi Dashboard &mdash; GPS NEO M8N + mjpeg-streamer</span>
-            <div class="footer-right">
-                <span>Update terakhir:</span>
-                <span id="last-update">—</span>
-            </div>
+        <div class="stat-cell sc-green">
+            <div class="stat-label">Longitude</div>
+            <div class="stat-val" id="s-lng">—</div>
         </div>
-
+        <div class="stat-cell sc-pink">
+            <div class="stat-label">SOG</div>
+            <div class="stat-val" id="s-sog">—<span>kn</span></div>
+        </div>
+        <div class="stat-cell sc-amber">
+            <div class="stat-label">COG</div>
+            <div class="stat-val" id="s-cog">—<span>°</span></div>
+        </div>
+        <div class="stat-cell sc-teal">
+            <div class="stat-label">Power</div>
+            <div class="stat-val" id="s-power">—<span>%</span></div>
+        </div>
+        <div class="stat-cell sc-red">
+            <div class="stat-label">Heading</div>
+            <div class="stat-val" id="s-heading">—<span>°</span></div>
+        </div>
     </div>
 
-    <script>
-        const raspberryIp = "{{ $raspberryIp }}";
-        const gpsUrl = `http://${raspberryIp}:5000/api/gps`;
+    <!-- ── MAIN ── -->
+    <div class="main">
 
-        // Clock
+        <!-- LEFT -->
+        <div class="left-panel">
+
+            <!-- CAMERA CARD -->
+            <div class="card cam-card">
+                <div class="card-hd">
+                    <div class="card-title">Interface Camera</div>
+                    <div class="card-badge">socket.io · base64</div>
+                </div>
+                <div class="dual-cam" style="flex:1;min-height:0;">
+                    <div class="cam-pane">
+                        <img id="cam-underwater"
+                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                            alt="Underwater camera">
+                        <div class="cam-overlay"></div>
+                        <div class="cam-rec">
+                            <div class="rec-dot"></div>REC
+                        </div>
+                        <div class="cam-label">Underwater Imaging</div>
+                    </div>
+                    <div class="cam-pane">
+                        <img id="cam-surface"
+                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                            alt="Surface camera">
+                        <div class="cam-overlay"></div>
+                        <div class="cam-rec">
+                            <div class="rec-dot"></div>REC
+                        </div>
+                        <div class="cam-label">Surface Imaging</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAPTURE CARD -->
+            <div class="card capture-card">
+                <div class="card-hd">
+                    <div class="card-title">Object Detection Capture</div>
+                    <div class="card-badge green" id="cap-time">—</div>
+                </div>
+                <div class="capture-row">
+                    <div class="cap-pane">
+                        <div class="cap-label">Green Box</div>
+                        <div class="cap-img-wrap" id="green-wrap">
+                            <span class="cap-empty">No capture</span>
+                        </div>
+                    </div>
+                    <div class="cap-pane">
+                        <div class="cap-label">Blue Box</div>
+                        <div class="cap-img-wrap" id="blue-wrap">
+                            <span class="cap-empty">No capture</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div class="right-panel">
+
+            <!-- MAP CARD -->
+            <div class="card map-card">
+                <div class="card-hd">
+                    <div class="card-title">Realtime Map</div>
+                    <div class="card-badge green" id="map-badge">Menunggu GPS...</div>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <!-- TELEMETRY CARD -->
+            <div class="card tele-card">
+                <div class="card-hd">
+                    <div class="card-title">Telemetry</div>
+                    <div class="card-badge" id="tele-time">Time: —</div>
+                </div>
+                <div class="tele-grid">
+                    <div class="tele-field">
+                        <div class="tele-lbl">Latitude</div>
+                        <div class="tele-val" id="t-lat">—</div>
+                    </div>
+                    <div class="tele-field">
+                        <div class="tele-lbl">Longitude</div>
+                        <div class="tele-val" id="t-lng">—</div>
+                    </div>
+                    <div class="tele-field">
+                        <div class="tele-lbl">SOG</div>
+                        <div class="tele-val" id="t-sog">—</div>
+                    </div>
+                    <div class="tele-field">
+                        <div class="tele-lbl">COG</div>
+                        <div class="tele-val" id="t-cog">—</div>
+                    </div>
+                    <div class="tele-field">
+                        <div class="tele-lbl">Power</div>
+                        <div class="tele-val" id="t-power">—</div>
+                    </div>
+                    <div class="tele-field">
+                        <div class="tele-lbl">Heading</div>
+                        <div class="tele-val" id="t-heading">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROGRESS CARD -->
+            <div class="card prog-card">
+                <div class="card-hd">
+                    <div class="card-title">Progress Position</div>
+                    <div class="card-badge" id="prog-badge">Preparation</div>
+                </div>
+                <div class="prog-inner">
+                    <div class="timeline">
+                        <div class="log-item active" id="step-prep">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Preparation</span>
+                        </div>
+                        <div class="log-item" id="step-start">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Start</span>
+                        </div>
+                        <div class="log-item" id="step-float">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Floating Ball 1–10</span>
+                        </div>
+                        <div class="log-item" id="step-surface">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Mission Surface Imaging</span>
+                        </div>
+                        <div class="log-item" id="step-underwater">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Mission Underwater Imaging</span>
+                        </div>
+                        <div class="log-item" id="step-finish">
+                            <div class="log-dot"></div>
+                            <span class="log-text">Finish</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── FOOTER ── -->
+    <footer>
+        <span>Arunavastra Dashboard — Realtime Telemetry &amp; GPS Tracking</span>
+        <span id="f-time">—</span>
+    </footer>
+
+    <script>
+        /* ── CLOCK ── */
         function updateClock() {
             const now = new Date();
-            const pad = n => String(n).padStart(2, '0');
-            document.getElementById('cam-time').textContent =
-                `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const p = n => String(n).padStart(2, '0');
+            const ts = `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+            document.getElementById('f-time').textContent = ts;
+            document.getElementById('cap-time').textContent = ts;
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        function setStatus(type, text, sub) {
-            const wrap = document.getElementById('gps-status-wrap');
-            wrap.className = type;
-            document.getElementById('gps-status-text').textContent = text;
-            if (sub) document.getElementById('gps-status-sub').textContent = sub;
+        /* ── MAP (Leaflet) ── */
+        const map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            })
+            .setView([-6.2, 106.8], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        const marker = L.marker([-6.2, 106.8]).addTo(map);
+
+        const trackLine = L.polyline([], {
+            color: '#38bdf8',
+            weight: 2.5,
+            opacity: .8
+        }).addTo(map);
+
+        let coords = [];
+
+        /* ── PROGRESS ── */
+        const STEPS = ['prep', 'start', 'float', 'surface', 'underwater', 'finish'];
+        let currentStep = 'prep';
+        let lastLat = null,
+            lastLng = null;
+
+        function setStep(id) {
+            const idx = STEPS.indexOf(id);
+            STEPS.forEach((s, i) => {
+                const el = document.getElementById('step-' + s);
+                el.classList.remove('active', 'done');
+                if (i < idx) el.classList.add('done');
+                else if (i === idx) el.classList.add('active');
+            });
+            currentStep = id;
+            document.getElementById('prog-badge').textContent =
+                document.querySelector('#step-' + id + ' .log-text').textContent;
         }
 
-        function fmt(val, decimals = 6) {
-            if (val == null || val === '') return '—';
-            return parseFloat(val).toFixed(decimals);
-        }
+        /* helper: format number */
+        const fmt = (v, d = 6) => (v != null && v !== '') ? parseFloat(v).toFixed(d) : '—';
 
-        async function loadGps() {
-            try {
-                const response = await fetch(gpsUrl);
-                const data = await response.json();
+        /* ── SOCKET.IO ── */
+        const socket = io();
+        const connPill = document.getElementById('conn-pill');
+        const connText = document.getElementById('conn-text');
 
-                if (data.status !== 'ok') {
-                    setStatus('error', data.message || 'GPS belum fix', 'Sinyal tidak tersedia');
-                    document.getElementById('gps-fix-label').textContent = 'fix: ✗';
-                    return;
+        socket.on('connect', () => {
+            connPill.classList.remove('err');
+            connPill.classList.add('ok');
+            connText.textContent = 'Connected';
+        });
+
+        socket.on('disconnect', () => {
+            connPill.classList.remove('ok');
+            connPill.classList.add('err');
+            connText.textContent = 'Disconnected';
+        });
+
+        /* camera streams */
+        socket.on('camera_underwater', data => {
+            document.getElementById('cam-underwater').src = 'data:image/jpeg;base64,' + data;
+        });
+
+        socket.on('camera_surface', data => {
+            document.getElementById('cam-surface').src = 'data:image/jpeg;base64,' + data;
+        });
+
+        /* telemetry */
+        socket.on('real-time-update', data => {
+
+            if (data.position) {
+                const {
+                    lat,
+                    lng
+                } = data.position;
+
+                /* stat bar */
+                document.getElementById('s-lat').innerHTML = fmt(lat, 5);
+                document.getElementById('s-lng').innerHTML = fmt(lng, 5);
+                document.getElementById('s-sog').innerHTML = (data.sog ?? '—') + '<span>kn</span>';
+                document.getElementById('s-cog').innerHTML = (data.cog ?? '—') + '<span>°</span>';
+                document.getElementById('s-power').innerHTML = (data.power ?? '—') + '<span>%</span>';
+                document.getElementById('s-heading').innerHTML = (data.heading ?? '—') + '<span>°</span>';
+
+                /* telemetry detail */
+                document.getElementById('t-lat').textContent = fmt(lat);
+                document.getElementById('t-lng').textContent = fmt(lng);
+                document.getElementById('t-sog').textContent = (data.sog ?? '—') + ' kn';
+                document.getElementById('t-cog').textContent = (data.cog ?? '—') + '°';
+                document.getElementById('t-power').textContent = (data.power != null ? data.power + '%' : '—');
+                document.getElementById('t-heading').textContent = (data.heading ?? '—') + '°';
+
+                /* map badge */
+                document.getElementById('map-badge').textContent =
+                    `${fmt(lat,4)}, ${fmt(lng,4)}`;
+
+                /* leaflet map */
+                marker.setLatLng([lat, lng]);
+                coords.push([lat, lng]);
+                trackLine.setLatLngs(coords);
+                map.panTo([lat, lng]);
+
+                /* auto-progress */
+                if (lastLat !== null && currentStep === 'prep') {
+                    if (Math.abs(lat - lastLat) > 0.00001 || Math.abs(lng - lastLng) > 0.00001) {
+                        setStep('start');
+                    }
                 }
 
-                setStatus('active', 'GPS Aktif', `lat ${fmt(data.latitude,4)} · lng ${fmt(data.longitude,4)}`);
-                document.getElementById('gps-fix-label').textContent = 'fix: ✓';
-
-                // Stat bar
-                document.getElementById('s-lat').innerHTML = `${fmt(data.latitude)}`;
-                document.getElementById('s-lng').innerHTML = `${fmt(data.longitude)}`;
-                document.getElementById('s-alt').innerHTML = `${data.altitude ?? '—'}<span>m</span>`;
-                document.getElementById('s-spd').innerHTML = `${data.speed ?? 0}<span>m/s</span>`;
-
-                // Detail
-                document.getElementById('latitude').textContent = fmt(data.latitude);
-                document.getElementById('longitude').textContent = fmt(data.longitude);
-                document.getElementById('altitude').textContent = `${data.altitude ?? '—'} m`;
-                document.getElementById('speed').textContent = `${data.speed ?? 0} m/s`;
-
-                // Map
-                const mapSrc = `https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=16&output=embed`;
-                const iframe = document.getElementById('map');
-                const placeholder = document.getElementById('map-placeholder');
-                if (iframe.src !== mapSrc) {
-                    iframe.src = mapSrc;
-                    iframe.style.display = 'block';
-                    placeholder.style.display = 'none';
-                }
-                document.getElementById('map-coords-label').textContent =
-                    `${fmt(data.latitude,4)}, ${fmt(data.longitude,4)}`;
-
-            } catch (error) {
-                setStatus('error', 'Gagal konek ke Raspberry Pi', error.message || '');
-                document.getElementById('gps-fix-label').textContent = 'fix: ✗';
+                lastLat = lat;
+                lastLng = lng;
             }
 
-            // Timestamp
-            const now = new Date();
-            document.getElementById('last-update').textContent = now.toLocaleTimeString('id-ID');
-        }
+            if (data.geotime) {
+                document.getElementById('tele-time').textContent = 'Time: ' + data.geotime;
+            }
+        });
 
-        loadGps();
-        setInterval(loadGps, 3000);
+        /* time update (separate event) */
+        socket.on('time-update', data => {
+            if (data.geotime) {
+                document.getElementById('tele-time').textContent = 'Time: ' + data.geotime;
+            }
+        });
+
+        /* detection captures */
+        socket.on('capture-green', img => {
+            const wrap = document.getElementById('green-wrap');
+            wrap.innerHTML = '';
+            const el = document.createElement('img');
+            el.src = 'data:image/jpeg;base64,' + img;
+            el.alt = 'Green box detection';
+            wrap.appendChild(el);
+        });
+
+        socket.on('capture-blue', img => {
+            const wrap = document.getElementById('blue-wrap');
+            wrap.innerHTML = '';
+            const el = document.createElement('img');
+            el.src = 'data:image/jpeg;base64,' + img;
+            el.alt = 'Blue box detection';
+            wrap.appendChild(el);
+        });
+
+        /* expose setStep to server if needed via custom event */
+        socket.on('mission-step', data => {
+            if (data.step && STEPS.includes(data.step)) setStep(data.step);
+        });
     </script>
 
 </body>
